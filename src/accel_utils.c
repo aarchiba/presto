@@ -661,6 +661,7 @@ void output_fundamentals(fourierprops * props, GSList * list,
              }
              ifft_peak *= cand->numharm*upsample;
              coherent_pow = ifft_peak*ifft_peak;
+             free(profile);
          } else {
              /* These phase calculations assume the fundamental is best */
              /* Better to irfft them and check the amplitude */
