@@ -631,21 +631,51 @@ void output_fundamentals(fourierprops * props, GSList * list,
          double coherent_r = 0.0, coherent_i = 0.0;
          double phs0, phscorr, amp;
          rderivs harm;
+         double ifft_peak;
 
-         /* These phase calculations assume the fundamental is best */
-         /* Better to irfft them and check the amplitude */
          phs0 = cand->derivs[0].phs;
-         for (jj = 0; jj < cand->numharm; jj++) {
-            harm = cand->derivs[jj];
-            if (obs->nph > 0.0)
-               amp = sqrt(harm.pow / obs->nph);
-            else
-               amp = sqrt(harm.pow / harm.locpow);
-            phscorr = phs0 - fmod((jj + 1.0) * phs0, TWOPI);
-            coherent_r += amp * cos(harm.phs + phscorr);
-            coherent_i += amp * sin(harm.phs + phscorr);
+         if (obs->use_new_coherent_power) {
+             float* profile;
+             double amp;
+             const int upsample=4;
+             profile = gen_fvect(cand->numharm*upsample*2);
+             for(jj=0;jj<cand->numharm*upsample*2;jj++)
+                 profile[jj]=0;
+
+             for(jj=0; jj<cand->numharm; jj++) {
+                 harm = cand->derivs[jj];
+                 if (obs->nph > 0.0)
+                     amp = sqrt(harm.pow / obs->nph);
+                 else
+                     amp = sqrt(harm.pow / harm.locpow);
+                 phscorr = - fmod((jj + 1.0) * phs0, TWOPI);
+                 profile[2*jj+2] = amp*cos(harm.phs+phscorr);
+                 profile[2*jj+3] = amp*sin(harm.phs+phscorr);
+             }
+             realfft(profile, cand->numharm*upsample*2, 1);
+             ifft_peak = 0;
+             for(jj=0;jj<cand->numharm*upsample*2;jj++) {
+                 if (profile[jj]>ifft_peak) {
+                     ifft_peak = profile[jj];
+                 }
+             }
+             ifft_peak *= cand->numharm*upsample;
+             coherent_pow = ifft_peak*ifft_peak;
+         } else {
+             /* These phase calculations assume the fundamental is best */
+             /* Better to irfft them and check the amplitude */
+             for (jj = 0; jj < cand->numharm; jj++) {
+                harm = cand->derivs[jj];
+                if (obs->nph > 0.0)
+                   amp = sqrt(harm.pow / obs->nph);
+                else
+                   amp = sqrt(harm.pow / harm.locpow);
+                phscorr = - fmod((jj + 1.0) * phs0, TWOPI);
+                coherent_r += amp * cos(harm.phs + phscorr);
+                coherent_i += amp * sin(harm.phs + phscorr);
+             }
+             coherent_pow = coherent_r * coherent_r + coherent_i * coherent_i;
          }
-         coherent_pow = coherent_r * coherent_r + coherent_i * coherent_i;
       }
 
       sprintf(tmpstr, "%-4d", ii + 1);
@@ -1150,6 +1180,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
    }
 
    obs->use_harmonic_polishing = cmd->harmpolishP;
+   obs->use_new_coherent_power = cmd->newpowP;
 
    /* Read the info file */
 
