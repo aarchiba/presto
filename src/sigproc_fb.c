@@ -22,6 +22,10 @@ static int bufferpts = 0, padnum = 0, shiftbuffer = 1;
 static float clip_sigma_st = 0.0;
 static int using_MPI = 0;
 
+int sigbit;
+int sigbit_array[40];
+int bit_array[16];
+
 /* Note:  Much of this has been ripped out of SIGPROC v2.8 */
 /* and then slightly modified.  Thanks Dunc!               */
 
@@ -476,13 +480,15 @@ void get_filterbank_file_info(FILE * files[], int numfiles, float clipsig,
 
    /* Now read the first header... */
    headerlen = read_filterbank_header(&(fb_st[0]), files[0]);
-   if (fb_st[0].nbits != 8) {
-      printf("\nThe number of bits per sample (%d) does not equal 8!",
-             fb_st[0].nbits);
-      printf("   Exiting.\n\n");
-      exit(0);
-   } else {
-      bytesperpt_st = 1;
+//   if (fb_st[0].nbits != 8) {
+   if (fb_st[0].nbits == 8) {
+//      printf("\nThe number of bits per sample (%d) does not equal 8!",
+//             fb_st[0].nbits);
+//      printf("   Exiting.\n\n");
+//      exit(0);
+     bytesperpt_st=1;
+   } else if (fb_st[0].nbits == 16){
+      bytesperpt_st=2;
    }
    sigprocfb_to_inf(fb_st + 0, idata_st + 0);
    chkfseek(files[0], fb_st[0].headerlen, SEEK_SET);
@@ -679,7 +685,6 @@ int read_filterbank_rawblock(FILE * infiles[], int numfiles,
       return 0;
 
    /* First, attempt to read data from the current file */
-
    if (chkfread((unsigned char *) rawdatabuffer, bytesperblk_st, 1, infiles[currentfile])) {    /* Got Data */
       /* See if we need to byte-swap and if so, doit */
       if (need_byteswap_st) {
@@ -1030,7 +1035,53 @@ void convert_filterbank_block(int *indata, unsigned char *outdata)
             outdata[ii + offset] = chardata[jj + offset];
       }
    } else if (bytesperpt_st == 2) {
-      printf("Can't handle 2-byte data yet!\n");
+     unsigned short *shortdata = (unsigned short *) indata;
+     unsigned short tempshort;
+     int cursamp;
+     int bitnum;
+     int sigbit2=0;
+     for(bitnum=0;bitnum<16;++bitnum)
+       bit_array[bitnum]=0;
+     for(cursamp=0;cursamp<ptsperblk_st*bytesperpt_st;++cursamp)
+     {
+       int sigbit1=0;
+       tempshort=shortdata[cursamp];
+       while(tempshort!=(unsigned short)(0))
+       {
+         tempshort>>=1;
+         sigbit1++;
+       }
+       bit_array[sigbit1]++;
+       if(sigbit1>sigbit2)
+         sigbit2=sigbit1;
+     }
+     int bitcount=0;
+     for(bitnum=0;bitcount<256;++bitnum)
+       bitcount=bitcount+bit_array[bitnum];
+     sigbit2=bitnum;
+     if(sigbit2>sigbit)
+       sigbit=sigbit2;
+     for(bitnum=39;bitnum>0;--bitnum)
+       sigbit_array[bitnum]=sigbit_array[bitnum-1];
+     sigbit_array[0]=sigbit2;
+     sigbit=0;
+     for(bitnum=0;bitnum<40;++bitnum)
+       if(sigbit_array[bitnum]>sigbit)
+         sigbit=sigbit_array[bitnum];
+     for (samp_ct = 0;samp_ct < ptsperblk_st; samp_ct++) {
+       offset = samp_ct * numchan_st;
+       for(ii = 0, jj = numchan_st - 1; ii < numchan_st; ii++, jj--)
+       {
+         if(sigbit>8)
+         {
+           if(shortdata[jj+offset]>>(sigbit)==0)
+             shortdata[jj+offset]=shortdata[jj+offset]>>(sigbit-8);
+           else
+             shortdata[jj+offset]=255;
+         }
+         outdata[ii + offset] = shortdata[jj + offset];
+       }
+     }
    } else if (bytesperpt_st == 4) {
       printf("Can't handle 4-byte data yet!\n");
    } else {
