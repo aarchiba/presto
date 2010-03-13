@@ -57,6 +57,7 @@ typedef struct accelobs{
   char *accelnm;       /* The filename of the final candidates in text */
   char *workfilenm;    /* The filename of the working candidates in text */
   int use_harmonic_polishing; /* Should we force harmonics to be related */
+  int use_new_coherent_power; /* Should we use the new defn of coherent power */
 } accelobs;
 
 typedef struct accelcand{

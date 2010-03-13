@@ -60,6 +60,8 @@ static Cmdline cmd = {
   /* medianP = */ 0,
   /***** -locpow: Use new-style double-tophat local-power normalization */
   /* locpowP = */ 0,
+  /***** -newpow: Use new definition of coherent power */
+  /* newpowP = */ 0,
   /***** -zaplist: A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file) */
   /* zaplistP = */ 0,
   /* zaplist = */ (char*)0,
@@ -890,6 +892,13 @@ showOptionValues(void)
     printf("-locpow found:\n");
   }
 
+  /***** -newpow: Use new definition of coherent power */
+  if( !cmd.newpowP ) {
+    printf("-newpow not found.\n");
+  } else {
+    printf("-newpow found:\n");
+  }
+
   /***** -zaplist: A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file) */
   if( !cmd.zaplistP ) {
     printf("-zaplist not found.\n");
@@ -935,7 +944,7 @@ showOptionValues(void)
 void
 usage(void)
 {
-  fprintf(stderr,"%s","   [-lobin lobin] [-numharm numharm] [-zmax zmax] [-sigma sigma] [-rlo rlo] [-rhi rhi] [-flo flo] [-fhi fhi] [-photon] [-median] [-locpow] [-zaplist zaplist] [-baryv baryv] [-harmpolish] [--] infile\n");
+  fprintf(stderr,"%s","   [-lobin lobin] [-numharm numharm] [-zmax zmax] [-sigma sigma] [-rlo rlo] [-rhi rhi] [-flo flo] [-fhi fhi] [-photon] [-median] [-locpow] [-newpow] [-zaplist zaplist] [-baryv baryv] [-harmpolish] [--] infile\n");
   fprintf(stderr,"%s","      Search an FFT or short time series for pulsars using a Fourier domain acceleration search with harmonic summing.\n");
   fprintf(stderr,"%s","         -lobin: The first Fourier frequency in the data file\n");
   fprintf(stderr,"%s","                 1 int value between 0 and oo\n");
@@ -962,6 +971,7 @@ usage(void)
   fprintf(stderr,"%s","        -photon: Data is poissonian so use freq 0 as power normalization\n");
   fprintf(stderr,"%s","        -median: Use old-style block-median power normalization (current default)\n");
   fprintf(stderr,"%s","        -locpow: Use new-style double-tophat local-power normalization\n");
+  fprintf(stderr,"%s","        -newpow: Use new definition of coherent power\n");
   fprintf(stderr,"%s","       -zaplist: A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file)\n");
   fprintf(stderr,"%s","                 1 char* value\n");
   fprintf(stderr,"%s","         -baryv: The radial velocity component (v/c) towards the target during the obs\n");
@@ -1075,6 +1085,11 @@ parseCmdline(int argc, char **argv)
 
     if( 0==strcmp("-locpow", argv[i]) ) {
       cmd.locpowP = 1;
+      continue;
+    }
+
+    if( 0==strcmp("-newpow", argv[i]) ) {
+      cmd.newpowP = 1;
       continue;
     }
 

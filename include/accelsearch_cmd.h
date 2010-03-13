@@ -47,6 +47,8 @@ typedef struct s_Cmdline {
   char medianP;
   /***** -locpow: Use new-style double-tophat local-power normalization */
   char locpowP;
+  /***** -newpow: Use new definition of coherent power */
+  char newpowP;
   /***** -zaplist: A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file) */
   char zaplistP;
   char* zaplist;

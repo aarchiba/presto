@@ -33,6 +33,7 @@ accelsearch \- Search an FFT or short time series for pulsars using a Fourier do
 [-photon]
 [-median]
 [-locpow]
+[-newpow]
 [-zaplist zaplist]
 [-baryv baryv]
 [-harmpolish]
@@ -91,6 +92,8 @@ Data is poissonian so use freq 0 as power normalization.
 Use old-style block-median power normalization (current default).
 .IP -locpow
 Use new-style double-tophat local-power normalization.
+.IP -newpow
+Use new definition of coherent power.
 .IP -zaplist
 A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file),
 .br

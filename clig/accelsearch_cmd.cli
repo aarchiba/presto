@@ -29,6 +29,7 @@ Double -fhi     fhi     {The highest frequency (Hz) (of the highest harmonic!) t
 Flag   -photon  photon  {Data is poissonian so use freq 0 as power normalization}
 Flag   -median  median  {Use old-style block-median power normalization (current default)}
 Flag   -locpow  locpow  {Use new-style double-tophat local-power normalization}
+Flag   -newpow  newpow  {Use new definition of coherent power}
 String  -zaplist    zaplist \
         {A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file)}
 Double  -baryv      baryv \
