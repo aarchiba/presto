@@ -440,13 +440,15 @@ GSList *eliminate_harmonics(GSList * cands, int *numcands)
 void optimize_accelcand(accelcand * cand, accelobs * obs)
 {
    int ii;
-   int r_offset[MAX_HARMONICS];
-   fcomplex *data[MAX_HARMONICS];
+   int *r_offset;
+   fcomplex **data;
    double r, z;
 
    cand->pows = gen_dvect(cand->numharm);
    cand->hirs = gen_dvect(cand->numharm);
    cand->hizs = gen_dvect(cand->numharm);
+   r_offset = (int*) malloc(sizeof(int)*cand->numharm);
+   data = (fcomplex**) malloc(sizeof(fcomplex*)*cand->numharm);
    cand->derivs = (rderivs *) malloc(sizeof(rderivs) * cand->numharm);
 
    if (obs->use_harmonic_polishing) {
@@ -498,6 +500,8 @@ void optimize_accelcand(accelcand * cand, accelobs * obs)
           cand->hirs[ii] += obs->lobin;
        }
    }
+   free(r_offset);
+   free(data);
 
    cand->sigma = candidate_sigma(cand->power, cand->numharm,
                                  obs->numindep[twon_to_index(cand->numharm)]);
@@ -631,21 +635,54 @@ void output_fundamentals(fourierprops * props, GSList * list,
          double coherent_r = 0.0, coherent_i = 0.0;
          double phs0, phscorr, amp;
          rderivs harm;
+         double ifft_peak;
 
          /* These phase calculations assume the fundamental is best */
          /* Better to irfft them and check the amplitude */
          phs0 = cand->derivs[0].phs;
-         for (jj = 0; jj < cand->numharm; jj++) {
-            harm = cand->derivs[jj];
-            if (obs->nph > 0.0)
-               amp = sqrt(harm.pow / obs->nph);
-            else
-               amp = sqrt(harm.pow / harm.locpow);
-            phscorr = phs0 - fmod((jj + 1.0) * phs0, TWOPI);
-            coherent_r += amp * cos(harm.phs + phscorr);
-            coherent_i += amp * sin(harm.phs + phscorr);
+         if (obs->use_new_coherent_power) {
+             float* profile;
+             double amp;
+             const int upsample=4;
+             profile = gen_fvect(cand->numharm*upsample*2);
+             for(jj=0;jj<cand->numharm*upsample*2;jj++)
+                 profile[jj]=0;
+
+             for(jj=0; jj<cand->numharm; jj++) {
+                 harm = cand->derivs[jj];
+                 if (obs->nph > 0.0)
+                     amp = sqrt(harm.pow / obs->nph);
+                 else
+                     amp = sqrt(harm.pow / harm.locpow);
+                 phscorr = - fmod((jj + 1.0) * phs0, TWOPI);
+                 profile[2*jj+2] = amp*cos(harm.phs+phscorr);
+                 profile[2*jj+3] = amp*sin(harm.phs+phscorr);
+             }
+             realfft(profile, cand->numharm*upsample*2, 1);
+             ifft_peak = 0;
+             for(jj=0;jj<cand->numharm*upsample*2;jj++) {
+                 if (profile[jj]>ifft_peak) {
+                     ifft_peak = profile[jj];
+                 }
+             }
+             ifft_peak *= cand->numharm*upsample;
+             coherent_pow = ifft_peak*ifft_peak;
+             free(profile);
+         } else {
+             /* These phase calculations assume the fundamental is best */
+             /* Better to irfft them and check the amplitude */
+             for (jj = 0; jj < cand->numharm; jj++) {
+                harm = cand->derivs[jj];
+                if (obs->nph > 0.0)
+                   amp = sqrt(harm.pow / obs->nph);
+                else
+                   amp = sqrt(harm.pow / harm.locpow);
+                phscorr = - fmod((jj + 1.0) * phs0, TWOPI);
+                coherent_r += amp * cos(harm.phs + phscorr);
+                coherent_i += amp * sin(harm.phs + phscorr);
+             }
+             coherent_pow = coherent_r * coherent_r + coherent_i * coherent_i;
          }
-         coherent_pow = coherent_r * coherent_r + coherent_i * coherent_i;
       }
 
       sprintf(tmpstr, "%-4d", ii + 1);
@@ -817,14 +854,24 @@ void print_accelcand(gpointer data, gpointer user_data)
 
 fcomplex *get_fourier_amplitudes(int lobin, int numbins, accelobs * obs)
 {
-   if (obs->mmap_file || obs->dat_input) {
-      if (lobin - obs->lobin < -ACCEL_PADDING)
-         printf
-             ("\nWARNING!!!:  Accessing memory before the beginning of the FFT!\n");
-      return (fcomplex *) obs->fft + (lobin - obs->lobin);
-   } else {
-      return read_fcomplex_file(obs->fftfile, lobin - obs->lobin, numbins);
-   }
+    if (obs->mmap_file || obs->dat_input) {
+        fcomplex *tmpdata = gen_cvect(numbins);
+        int offset = 0;
+        // zero-pad if we try to read before the beginning of the FFT
+        if (lobin - obs->lobin < 0) {
+            fcomplex zeros = {0.0, 0.0};
+            int ii;
+            offset = abs(lobin - obs->lobin);
+            for (ii = 0 ; ii < offset ; ii++)
+                tmpdata[ii] = zeros;
+        }            
+        memcpy(tmpdata + offset, 
+               (fcomplex *) (obs->fft + (lobin - obs->lobin) + offset),
+               sizeof(fcomplex) * (numbins - offset));
+        return tmpdata;
+    } else {
+        return read_fcomplex_file(obs->fftfile, lobin - obs->lobin, numbins);
+    }
 }
 
 
@@ -832,10 +879,10 @@ ffdotpows *subharm_ffdot_plane(int numharm, int harmnum,
                                double fullrlo, double fullrhi,
                                subharminfo * shi, accelobs * obs)
 {
-   int ii, lobin, hibin, numdata, nrs, fftlen, binoffset;
+   int ii, lobin, hibin, numdata, nice_numdata, nrs, fftlen, binoffset;
    static int numrs_full = 0, numzs_full = 0;
    float powargr, powargi;
-   double drlo, drhi, norm, harm_fract;
+   double drlo, drhi, harm_fract;
    ffdotpows *ffdot;
    fcomplex *data, **result;
    presto_datainf datainf;
@@ -885,20 +932,50 @@ ffdotpows *subharm_ffdot_plane(int numharm, int harmnum,
    lobin = ffdot->rlo - binoffset;
    hibin = (int) ceil(drhi) + binoffset;
    numdata = hibin - lobin + 1;
-   data = get_fourier_amplitudes(lobin - obs->lobin, numdata, obs);
+   nice_numdata = next2_to_n(numdata);  // for FFTs
+   data = get_fourier_amplitudes(lobin, nice_numdata, obs);
+   if (!obs->mmap_file && !obs->dat_input)
+       printf("This is newly malloc'd!\n");
 
-   /* Determine the mean local power level (via median) */
+   // Normalize the Fourier amplitudes
 
-   if (obs->nph > 0.0) {        /* Unless freq 0 normalization is requested */
-      norm = 1.0 / obs->nph;
+   if (obs->nph > 0.0) {
+       //  Use freq 0 normalization if requested (i.e. photons)
+       double norm = 1.0 / sqrt(obs->nph);
+       for (ii = 0; ii < numdata; ii++) {
+           data[ii].r *= norm;
+           data[ii].i *= norm;
+       }
+   } else if (obs->norm_type == 0) {
+       //  old-style block median normalization
+       float *powers;
+       double norm;
+
+       powers = gen_fvect(numdata);
+       for (ii = 0; ii < numdata; ii++)
+           powers[ii] = POWER(data[ii].r, data[ii].i);
+       norm = 1.0 / sqrt(median(powers, numdata)/log(2.0));
+       free(powers);
+       for (ii = 0; ii < numdata; ii++) {
+           data[ii].r *= norm;
+           data[ii].i *= norm;
+       }
    } else {
-      float *powers;
+       //  new-style running double-tophat local-power normalization
+       float *powers, *loc_powers;
 
-      powers = gen_fvect(numdata);
-      for (ii = 0; ii < numdata; ii++)
-         powers[ii] = POWER(data[ii].r, data[ii].i);
-      norm = 1.0 / (1.442695 * median(powers, numdata));
-      free(powers);
+       powers = gen_fvect(nice_numdata);
+       for (ii = 0; ii < nice_numdata; ii++) {
+           powers[ii] = POWER(data[ii].r, data[ii].i);
+       }
+       loc_powers = corr_loc_pow(powers, nice_numdata);
+       for (ii = 0; ii < numdata; ii++) {
+           float norm = invsqrt(loc_powers[ii]);
+           data[ii].r *= norm;
+           data[ii].i *= norm;
+       }
+       free(powers);
+       free(loc_powers);
    }
 
    /* Perform the correlations */
@@ -912,14 +989,15 @@ ffdotpows *subharm_ffdot_plane(int numharm, int harmnum,
                          ACCEL_NUMBETWEEN, binoffset, CORR);
       datainf = SAME;
    }
-   if (!obs->mmap_file && !obs->dat_input)
-      free(data);
+
+   // Always free data
+   free(data);
 
    /* Convert the amplitudes to normalized powers */
 
    ffdot->powers = gen_fmatrix(ffdot->numzs, ffdot->numrs);
    for (ii = 0; ii < (ffdot->numzs * ffdot->numrs); ii++)
-      ffdot->powers[0][ii] = POWER(result[0][ii].r, result[0][ii].i) * norm;
+      ffdot->powers[0][ii] = POWER(result[0][ii].r, result[0][ii].i);
    free(result[0]);
    free(result);
    return ffdot;
@@ -1109,6 +1187,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
    }
 
    obs->use_harmonic_polishing = cmd->harmpolishP;
+   obs->use_new_coherent_power = cmd->newpowP;
 
    /* Read the info file */
 
@@ -1226,6 +1305,18 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
       /* For short FFTs insure that we don't pick up the DC */
       /* or Nyquist component as part of the interpolation  */
       /* for higher frequencies.                            */
+      if (cmd->locpowP) {
+          obs->norm_type = 1;
+          printf("Normalizing powers using new-style local-power determination.\n\n");
+      } else if (cmd->medianP) {
+          obs->norm_type = 0;
+          printf("Normalizing powers using old-style median-blocks.\n\n");
+      } else {
+          obs->norm_type = 0;
+          printf("WARNING:  No power normalization selected!\n"
+                 "          Using old-style block-median normalization.\n"
+                 "          Recommend '-locpow' in the future...\n\n");
+      }
       if (obs->dat_input) {
          obs->fft[0].r = 1.0;
          obs->fft[0].i = 1.0;

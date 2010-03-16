@@ -56,6 +56,12 @@ static Cmdline cmd = {
   /* fhiC = */ 1,
   /***** -photon: Data is poissonian so use freq 0 as power normalization */
   /* photonP = */ 0,
+  /***** -median: Use old-style block-median power normalization (current default) */
+  /* medianP = */ 0,
+  /***** -locpow: Use new-style double-tophat local-power normalization */
+  /* locpowP = */ 0,
+  /***** -newpow: Use new definition of coherent power */
+  /* newpowP = */ 0,
   /***** -zaplist: A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file) */
   /* zaplistP = */ 0,
   /* zaplist = */ (char*)0,
@@ -872,6 +878,27 @@ showOptionValues(void)
     printf("-photon found:\n");
   }
 
+  /***** -median: Use old-style block-median power normalization (current default) */
+  if( !cmd.medianP ) {
+    printf("-median not found.\n");
+  } else {
+    printf("-median found:\n");
+  }
+
+  /***** -locpow: Use new-style double-tophat local-power normalization */
+  if( !cmd.locpowP ) {
+    printf("-locpow not found.\n");
+  } else {
+    printf("-locpow found:\n");
+  }
+
+  /***** -newpow: Use new definition of coherent power */
+  if( !cmd.newpowP ) {
+    printf("-newpow not found.\n");
+  } else {
+    printf("-newpow found:\n");
+  }
+
   /***** -zaplist: A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file) */
   if( !cmd.zaplistP ) {
     printf("-zaplist not found.\n");
@@ -917,7 +944,7 @@ showOptionValues(void)
 void
 usage(void)
 {
-  fprintf(stderr,"%s","   [-lobin lobin] [-numharm numharm] [-zmax zmax] [-sigma sigma] [-rlo rlo] [-rhi rhi] [-flo flo] [-fhi fhi] [-photon] [-zaplist zaplist] [-baryv baryv] [-harmpolish] [--] infile\n");
+  fprintf(stderr,"%s","   [-lobin lobin] [-numharm numharm] [-zmax zmax] [-sigma sigma] [-rlo rlo] [-rhi rhi] [-flo flo] [-fhi fhi] [-photon] [-median] [-locpow] [-newpow] [-zaplist zaplist] [-baryv baryv] [-harmpolish] [--] infile\n");
   fprintf(stderr,"%s","      Search an FFT or short time series for pulsars using a Fourier domain acceleration search with harmonic summing.\n");
   fprintf(stderr,"%s","         -lobin: The first Fourier frequency in the data file\n");
   fprintf(stderr,"%s","                 1 int value between 0 and oo\n");
@@ -942,6 +969,9 @@ usage(void)
   fprintf(stderr,"%s","                 1 double value between 0.0 and oo\n");
   fprintf(stderr,"%s","                 default: `10000.0'\n");
   fprintf(stderr,"%s","        -photon: Data is poissonian so use freq 0 as power normalization\n");
+  fprintf(stderr,"%s","        -median: Use old-style block-median power normalization (current default)\n");
+  fprintf(stderr,"%s","        -locpow: Use new-style double-tophat local-power normalization\n");
+  fprintf(stderr,"%s","        -newpow: Use new definition of coherent power\n");
   fprintf(stderr,"%s","       -zaplist: A file of freqs+widths to zap from the FFT (only if the input file is a *.[s]dat file)\n");
   fprintf(stderr,"%s","                 1 char* value\n");
   fprintf(stderr,"%s","         -baryv: The radial velocity component (v/c) towards the target during the obs\n");
@@ -950,7 +980,7 @@ usage(void)
   fprintf(stderr,"%s","    -harmpolish: Constrain harmonics to be harmonically related during polishing\n");
   fprintf(stderr,"%s","         infile: Input file name of the floating point .fft or .[s]dat file.  A '.inf' file of the same name must also exist\n");
   fprintf(stderr,"%s","                 1 value\n");
-  fprintf(stderr,"%s","  version: 23Feb10\n");
+  fprintf(stderr,"%s","  version: 12Mar10\n");
   fprintf(stderr,"%s","  ");
   exit(EXIT_FAILURE);
 }
@@ -1045,6 +1075,21 @@ parseCmdline(int argc, char **argv)
 
     if( 0==strcmp("-photon", argv[i]) ) {
       cmd.photonP = 1;
+      continue;
+    }
+
+    if( 0==strcmp("-median", argv[i]) ) {
+      cmd.medianP = 1;
+      continue;
+    }
+
+    if( 0==strcmp("-locpow", argv[i]) ) {
+      cmd.locpowP = 1;
+      continue;
+    }
+
+    if( 0==strcmp("-newpow", argv[i]) ) {
+      cmd.newpowP = 1;
       continue;
     }
 

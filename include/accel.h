@@ -33,6 +33,7 @@ typedef struct accelobs{
   int numzap;          /* Number of birdies to zap */
   int dat_input;       /* The input file is a short time series */
   int mmap_file;       /* The file number if using MMAP */
+  int norm_type;       /* 0 = old-style block median, 1 = local-means power norm */
   double dt;           /* Data sample length (s) */           
   double T;            /* Total observation length */
   double rlo;          /* Minimum fourier freq to search */
@@ -56,6 +57,7 @@ typedef struct accelobs{
   char *accelnm;       /* The filename of the final candidates in text */
   char *workfilenm;    /* The filename of the working candidates in text */
   int use_harmonic_polishing; /* Should we force harmonics to be related */
+  int use_new_coherent_power; /* Should we use the new defn of coherent power */
 } accelobs;
 
 typedef struct accelcand{

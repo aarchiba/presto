@@ -11,7 +11,7 @@ ifeq ($(OS),Linux)
 	LIBSUFFIX = .so
 	LIBCMD = -shared
 	SYSDIR = /usr
-	LOCDIR = /usr/local
+	LOCDIR = /home/pulsar64
 # else assume Darwin (i.e. OSX)
 else
 	LIBSUFFIX = .dylib
@@ -21,13 +21,11 @@ else
 endif
 
 # Path to PGPLOT includes
-#PGPLOTINCDIR = -I$(PGPLOT_DIR)
-PGPLOTINCDIR = 
+PGPLOTINCDIR = -I$(PGPLOT_DIR)
 # Path to PGPLOT libraries
-#PGPLOTLIBDIR = -L$(PGPLOT_DIR)
-PGPLOTLIBDIR = 
+PGPLOTLIBDIR = -L$(PGPLOT_DIR)
 # How to link with the PGPLOT libs
-PGPLOTLINK = $(PGPLOTLIBDIR) -lcpgplot -lpgplot -L/usr/X11R6/lib -lX11 -lpthread -lpng -lz -ldl
+PGPLOTLINK = $(PGPLOTLIBDIR) -lcpgplot -lpgplot -L/usr/X11R6/lib64 -lX11 -lpthread -lpng -lz -ldl
 
 # You must define one of the following FFTTYPES (USEFFTW is default).
 # If you want to use FFTW for the FFTs, place sfftw.h and libsfftw.a
@@ -47,7 +45,7 @@ FFTLINK = $(FFTLIBDIR) -lfftw3f
 # Other include directories (i.e. glib.h)
 OTHERINCDIR = -I$(SYSDIR)/include/glib-2.0 -I$(SYSDIR)/lib/glib-2.0/include
 # Other link directories (i.e. libcfitsio)
-OTHERLIBDIR = -L.
+OTHERLIBDIR = -L/home/pulsar64/lib -L. 
 
 # The standard PRESTO libraries to link into executables
 PRESTOLINK = -L$(PRESTO)/lib -lpresto $(FFTLINK)
@@ -64,8 +62,9 @@ FC = gfortran
 #FC = g77
 CFLAGS = -I$(PRESTO)/include $(OTHERINCDIR) $(PGPLOTINCDIR) $(FFTINCDIR) \
 	-D$(FFTTYPE) -DUSEMMAP -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
-	-g -Wall -W
-#	-O3 -ffast-math -Wall -W -fPIC
+	-g -Wall -W -fPIC
+#	-g -Wall -W -fPIC -shared
+
 CLINKFLAGS = $(CFLAGS)
 # NOTE:  Be careful of upping the optimization on the
 #        FFLAGs.  Certain compilers (i.e. on Intel Macs) will
