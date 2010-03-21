@@ -1324,6 +1324,9 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
    obs->lobin = cmd->lobin;
    if (obs->lobin > 0) {
       obs->nph = 0.0;
+      /* FIXME: this is wrong */
+      /* numbins is the number of bins in the actual FFT file */
+      /* want lobin<N instead, I think */
       if (cmd->lobin > obs->numbins - 1) {
          printf("\n'lobin' is greater than the total number of\n");
          printf("   frequencies in the data set.  Exiting.\n\n");
