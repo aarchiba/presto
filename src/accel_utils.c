@@ -893,7 +893,7 @@ ffdotpows *subharm_ffdot_plane(int numharm, int harmnum,
       } else {
          printf("You must call subharm_ffdot_plane() with numharm=1 and\n");
          printf("harnum=1 before you use other values!  Exiting.\n\n");
-         exit(0);
+         exit(7);
       }
    }
    ffdot = (ffdotpows *) malloc(sizeof(ffdotpows));
@@ -1166,7 +1166,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
             printf("\nInput file ('%s') must be an '.fft' or '.[s]dat' file!\n\n",
                    cmd->argv[0]);
             free(suffix);
-            exit(0);
+            exit(8);
          }
          /* If the input file is a time series */
          if (strcmp(suffix, "dat") == 0 || strcmp(suffix, "sdat") == 0) {
@@ -1181,7 +1181,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
       } else {
          printf("\nInput file ('%s') must be an '.fft' or '.[s]dat' file!\n\n",
                 cmd->argv[0]);
-         exit(0);
+         exit(9);
       }
    }
 
@@ -1215,7 +1215,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
          filelen *= 2;
       if (filelen > 67108864) { /* Small since we need memory for the templates */
          printf("\nThe input time series is too large.  Use 'realfft' first.\n\n");
-         exit(0);
+         exit(10);
       }
 
       /* Read the time series into a temporary buffer */
@@ -1334,7 +1334,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
        cmd->numharm != 2 &&
        cmd->numharm != 4 && cmd->numharm != 8 && cmd->numharm != 16) {
       printf("\n'numharm' = %d must be a power-of-two!  Exiting\n\n", cmd->numharm);
-      exit(1);
+      exit(2);
    }
    obs->numharmstages = twon_to_index(cmd->numharm) + 1;
    obs->dz = ACCEL_DZ;
@@ -1349,7 +1349,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
       if (obs->rlo > obs->numbins - 1) {
          printf("\nLow frequency to search 'flo' is greater than\n");
          printf("   the highest available frequency.  Exiting.\n\n");
-         exit(1);
+         exit(3);
       }
    } else {
       if (cmd->rloP)
@@ -1361,7 +1361,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
       if (obs->rlo > obs->numbins - 1) {
          printf("\nLow frequency to search 'rlo' is greater than\n");
          printf("   the available number of points.  Exiting.\n\n");
-         exit(1);
+         exit(4);
       }
    }
    obs->highestbin = obs->numbins - 1;
@@ -1373,7 +1373,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
       if (obs->highestbin < obs->rlo) {
          printf("\nHigh frequency to search 'fhi' is less than\n");
          printf("   the lowest frequency to search 'flo'.  Exiting.\n\n");
-         exit(1);
+         exit(5);
       }
    } else if (cmd->rhiP) {
       obs->highestbin = cmd->rhi;
@@ -1383,7 +1383,7 @@ void create_accelobs(accelobs * obs, infodata * idata, Cmdline * cmd, int usemma
       if (obs->highestbin < obs->rlo) {
          printf("\nHigh frequency to search 'rhi' is less than\n");
          printf("   the lowest frequency to search 'rlo'.  Exiting.\n\n");
-         exit(1);
+         exit(6);
       }
    }
    obs->dr = ACCEL_DR;
